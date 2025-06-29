@@ -20,7 +20,7 @@
 
 1. 创建 Cloudflare Worker 项目
 2. 配置环境变量
-3. 部署代码至 Cloudflare Workers
+3. 部署[代码](./worker.js)至 Cloudflare Workers
 4. 访问 `/application-retain/api/oauth` 进行授权
 
 ## 环境变量说明
