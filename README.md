@@ -58,3 +58,20 @@
 有部署上的疑问，可以通过代码解决（比如应用 API 权限等）
 
 Demo 页面提供了上传、分块上传的示例，由 AI 生成
+
+## PicGo
+
+本项目兼容 PicGo
+
+你可以通过 picgo-plugin-web-uploader 进行上传
+
+![image](https://github.com/user-attachments/assets/46c260db-1d54-4bf1-abb4-f57b53ecea24)
+
+配置如下：
+
+- API 地址：<Worker 部署地址>/application-retain/api/upload?upload_token=<UploadToken>
+- POST 参数名：`file`
+- JSON 路径：`data.cdn_proxy_url`（代理模式） 或 `data.cdn_url`（重定向模式）
+- - 在请求参数中添加 `?realLink` 可以选择 `data.real_web_url`（真实地址 - SharePoint）
+- 自定义 body：`{"path": "/OneDriveImageHosting"}`
+- - `path` 配置即为你的自定义上传路径，与 `Worker` 配置的 `allowedPaths` 相一致
