@@ -46,6 +46,11 @@
 
 ![image](https://github.com/user-attachments/assets/b9c279ff-9bed-4b79-9234-d573b88ce655)
 
+本项目还需 KV 绑定，名称请固定填写 `OD_CACHE`
+
+![image](https://github.com/user-attachments/assets/cd0ec456-2029-4600-8f6c-0baabed8cc02)
+
+
 ## API 接口和 Demo
 
 [API 接口说明](./API.md) & [Demo 页面](./example.html)
