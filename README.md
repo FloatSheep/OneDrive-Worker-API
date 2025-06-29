@@ -45,3 +45,9 @@
 为了保持令牌，请添加定时任务，表达式为 `0 12 * * *`
 
 ![image](https://github.com/user-attachments/assets/b9c279ff-9bed-4b79-9234-d573b88ce655)
+
+## API 接口和 Demo
+
+[API 接口说明](./API.md) & [Demo 页面](./example.html)
+
+Demo 页面提供了上传、分块上传的示例，由 AI 生成
