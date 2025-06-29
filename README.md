@@ -5,7 +5,7 @@
 
 ## 概述
 
-本项目是一个基于 Cloudflare Workers 的 OneDrive 文件上传与分发服务，支持 OAuth 授权、文件上传、中转访问、Markdown 渲染等功能。
+本项目是一个基于 Cloudflare Workers 的 OneDrive **文件上传与分发服务**（并非**公共目录列表**），支持 OAuth 授权、文件上传、中转访问、Markdown 渲染等功能。
 
 ## 功能特性
 
