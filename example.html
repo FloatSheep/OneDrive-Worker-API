@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OneDrive CDN 上传示例</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      body {
+        background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+        color: #fff;
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 30px;
+      }
+
+      header {
+        text-align: center;
+        margin-bottom: 40px;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 15px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      }
+
+      h1 {
+        font-size: 2.8rem;
+        margin-bottom: 10px;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      }
+
+      .subtitle {
+        font-size: 1.2rem;
+        opacity: 0.9;
+        max-width: 700px;
+        margin: 0 auto;
+      }
+
+      .card-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 30px;
+        margin-bottom: 40px;
+      }
+
+      .card {
+        flex: 1;
+        min-width: 300px;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .card h2 {
+        font-size: 1.8rem;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .card h2 i {
+        font-size: 1.5rem;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+      }
+
+      input,
+      select {
+        width: 100%;
+        padding: 14px;
+        border-radius: 8px;
+        border: none;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        font-size: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      input::placeholder {
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      .file-input-container {
+        position: relative;
+        margin-bottom: 20px;
+      }
+
+      .file-input {
+        padding: 40px 20px;
+        text-align: center;
+        border: 2px dashed rgba(255, 255, 255, 0.3);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .file-input:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.5);
+      }
+
+      .file-input.drag-over {
+        background: rgba(92, 184, 92, 0.2);
+        border-color: #5cb85c;
+      }
+
+      #fileInput,
+      #chunkFileInput {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+
+      button {
+        width: 100%;
+        padding: 16px;
+        background: linear-gradient(45deg, #4a90e2, #5e72eb);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 10px;
+      }
+
+      button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      }
+
+      button:disabled {
+        background: linear-gradient(45deg, #555, #777);
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .progress-container {
+        margin-top: 25px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 10px;
+        padding: 20px;
+      }
+
+      .progress-bar {
+        height: 25px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        overflow: hidden;
+        margin-top: 10px;
+        position: relative;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #4a90e2, #5e72eb);
+        border-radius: 12px;
+        width: 0%;
+        transition: width 0.3s ease;
+      }
+
+      .progress-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-weight: 600;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+      }
+
+      .result {
+        margin-top: 25px;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 10px;
+        min-height: 100px;
+        font-family: monospace;
+        white-space: pre-wrap;
+        word-break: break-all;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .status {
+        padding: 10px;
+        border-radius: 8px;
+        margin-top: 15px;
+        text-align: center;
+        font-weight: 500;
+      }
+
+      .status.success {
+        background: rgba(92, 184, 92, 0.3);
+        border: 1px solid #5cb85c;
+      }
+
+      .status.error {
+        background: rgba(217, 83, 79, 0.3);
+        border: 1px solid #d9534f;
+      }
+
+      .url-box {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 12px;
+        border-radius: 8px;
+        margin: 10px 0;
+        word-break: break-all;
+      }
+
+      .url-box a {
+        color: #4a90e2;
+        text-decoration: none;
+      }
+
+      .url-box a:hover {
+        text-decoration: underline;
+      }
+
+      .info-section {
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 15px;
+        padding: 25px;
+        margin-top: 30px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      }
+
+      .info-section h3 {
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .info-content {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+      }
+
+      .info-box {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 20px;
+        border-radius: 10px;
+      }
+
+      .info-box h4 {
+        margin-bottom: 12px;
+        color: #4a90e2;
+      }
+
+      .endpoint {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 10px;
+        border-radius: 5px;
+        font-family: monospace;
+        margin: 8px 0;
+        word-break: break-all;
+      }
+
+      footer {
+        text-align: center;
+        margin-top: 40px;
+        padding: 20px;
+        opacity: 0.7;
+        font-size: 0.9rem;
+      }
+
+      @media (max-width: 768px) {
+        .card-container {
+          flex-direction: column;
+        }
+
+        h1 {
+          font-size: 2.2rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>OneDrive CDN Worker 上传示例</h1>
+        <p class="subtitle">
+          此演示页面展示了如何通过 JavaScript
+          使用普通上传和分块上传两种方式将文件上传到 OneDrive CDN Worker 服务
+        </p>
+      </header>
+
+      <div class="card-container">
+        <div class="card">
+          <h2><i>📤</i> 普通上传</h2>
+          <p>适合小于 100MB 的文件</p>
+
+          <div class="form-group">
+            <label for="endpoint">上传端点：</label>
+            <input
+              type="text"
+              id="endpoint"
+              placeholder="https://your-worker.domain/application-retain/api/upload"
+              value=""
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="uploadToken">上传令牌 (upload_token)：</label>
+            <input type="text" id="uploadToken" placeholder="输入安全令牌" />
+          </div>
+
+          <div class="form-group">
+            <label for="uploadPath">上传路径：</label>
+            <input
+              type="text"
+              id="uploadPath"
+              placeholder="/uploads"
+              value="/uploads"
+            />
+          </div>
+
+          <div class="file-input-container">
+            <div class="file-input" id="fileDropArea">
+              <p>点击或拖放文件到此处</p>
+              <p><small>(最大 100MB)</small></p>
+            </div>
+            <input type="file" id="fileInput" />
+          </div>
+
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="realLinkCheckbox" />
+              包含真实地址 (realLink)
+            </label>
+          </div>
+
+          <button id="uploadBtn" disabled>开始上传</button>
+
+          <div class="progress-container">
+            <p>上传进度：</p>
+            <div class="progress-bar">
+              <div class="progress-fill" id="uploadProgress"></div>
+              <div class="progress-text" id="uploadProgressText">0%</div>
+            </div>
+          </div>
+
+          <div class="result" id="uploadResult">
+            {/* 上传结果将显示在这里 */}
+          </div>
+
+          <div class="status" id="uploadStatus"></div>
+        </div>
+
+        <div class="card">
+          <h2><i>🔗</i> 分块上传</h2>
+          <p>适合大于 100MB 的文件（最高 4GB）</p>
+
+          <div class="form-group">
+            <label for="chunkEndpoint">创建会话端点：</label>
+            <input
+              type="text"
+              id="chunkEndpoint"
+              placeholder="https://your-worker.domain/application-retain/api/upload/create-session"
+              value=""
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="chunkToken">上传令牌 (upload_token)：</label>
+            <input type="text" id="chunkToken" placeholder="输入安全令牌" />
+          </div>
+
+          <div class="form-group">
+            <label for="chunkPath">上传路径：</label>
+            <input
+              type="text"
+              id="chunkPath"
+              placeholder="/large-files"
+              value="/large-files"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="chunkSize">分块大小 (MB)：</label>
+            <select id="chunkSize">
+              <option value="5">5 MB</option>
+              <option value="10" selected>10 MB</option>
+              <option value="20">20 MB</option>
+              <option value="50">50 MB</option>
+            </select>
+          </div>
+
+          <div class="file-input-container">
+            <div class="file-input" id="chunkFileDropArea">
+              <p>点击或拖放文件到此处</p>
+              <p><small>(支持大文件)</small></p>
+            </div>
+            <input type="file" id="chunkFileInput" />
+          </div>
+
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="chunkRealLinkCheckbox" />
+              包含真实地址 (realLink)
+            </label>
+          </div>
+
+          <button id="chunkUploadBtn" disabled>开始分块上传</button>
+
+          <div class="progress-container">
+            <p>上传进度：</p>
+            <div class="progress-bar">
+              <div class="progress-fill" id="chunkUploadProgress"></div>
+              <div class="progress-text" id="chunkUploadProgressText">0%</div>
+            </div>
+          </div>
+
+          <div class="result" id="chunkUploadResult">
+            {/* 分块上传结果将显示在这里 */}
+          </div>
+
+          <div class="status" id="chunkUploadStatus"></div>
+        </div>
+      </div>
+
+      <div class="info-section">
+        <h3><i>ℹ️</i> 使用说明</h3>
+        <div class="info-content">
+          <div class="info-box">
+            <h4>普通上传流程</h4>
+            <ol>
+              <li>设置上传端点和安全令牌</li>
+              <li>选择要上传的文件（≤100MB）</li>
+              <li>点击"开始上传"按钮</li>
+              <li>等待上传完成，查看结果</li>
+            </ol>
+
+            <h4>端点示例：</h4>
+            <div class="endpoint">
+              POST /application-retain/api/upload?upload_token=YOUR_TOKEN
+            </div>
+          </div>
+
+          <div class="info-box">
+            <h4>分块上传流程</h4>
+            <ol>
+              <li>设置创建会话端点和安全令牌</li>
+              <li>选择要上传的文件（支持大文件）</li>
+              <li>选择分块大小（默认10MB）</li>
+              <li>点击"开始分块上传"按钮</li>
+              <li>等待所有分块上传完成</li>
+            </ol>
+
+            <h4>端点示例：</h4>
+            <div class="endpoint">
+              POST
+              /application-retain/api/upload/create-session?upload_token=YOUR_TOKEN
+            </div>
+            <div class="endpoint">
+              PUT /application-retain/api/upload/chunk/:sessionId
+            </div>
+          </div>
+
+          <div class="info-box">
+            <h4>返回地址说明</h4>
+            <ul>
+              <li><strong>CDN地址</strong>: 通过Worker代理的文件访问地址</li>
+              <li><strong>代理模式</strong>: 通过Worker中转文件内容</li>
+              <li>
+                <strong>真实地址</strong>: 原始OneDrive地址（需要realLink参数）
+              </li>
+              <li>默认返回CDN地址，保护原始地址</li>
+            </ul>
+
+            <h4>分块大小建议</h4>
+            <ul>
+              <li>小文件：5-10 MB</li>
+              <li>中等文件：10-20 MB</li>
+              <li>大文件：20-50 MB</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <p>OneDrive CDN Worker 上传示例 &copy; 2023 | 使用纯JavaScript实现</p>
+      </footer>
+    </div>
+
+    <script>
+      // DOM元素引用
+      const fileInput = document.getElementById("fileInput");
+      const uploadBtn = document.getElementById("uploadBtn");
+      const uploadProgress = document.getElementById("uploadProgress");
+      const uploadProgressText = document.getElementById("uploadProgressText");
+      const uploadResult = document.getElementById("uploadResult");
+      const uploadStatus = document.getElementById("uploadStatus");
+      const fileDropArea = document.getElementById("fileDropArea");
+      const realLinkCheckbox = document.getElementById("realLinkCheckbox");
+
+      const chunkFileInput = document.getElementById("chunkFileInput");
+      const chunkUploadBtn = document.getElementById("chunkUploadBtn");
+      const chunkUploadProgress = document.getElementById(
+        "chunkUploadProgress"
+      );
+      const chunkUploadProgressText = document.getElementById(
+        "chunkUploadProgressText"
+      );
+      const chunkUploadResult = document.getElementById("chunkUploadResult");
+      const chunkUploadStatus = document.getElementById("chunkUploadStatus");
+      const chunkFileDropArea = document.getElementById("chunkFileDropArea");
+      const chunkRealLinkCheckbox = document.getElementById(
+        "chunkRealLinkCheckbox"
+      );
+      const baseUrl = "https://purple-bar-9d0e.floatsheep.workers.dev";
+
+      // 当前选中的文件
+      let selectedFile = null;
+      let selectedChunkFile = null;
+
+      // 初始化
+      document.addEventListener("DOMContentLoaded", () => {
+        // 设置默认端点（根据当前域名）
+        document.getElementById(
+          "endpoint"
+        ).value = `${baseUrl}/application-retain/api/upload`;
+        document.getElementById(
+          "chunkEndpoint"
+        ).value = `${baseUrl}/application-retain/api/upload/create-session`;
+
+        // 设置事件监听器
+        setupEventListeners();
+      });
+
+      // 设置事件监听器
+      function setupEventListeners() {
+        // 普通上传区域
+        fileInput.addEventListener("change", handleFileSelect);
+        uploadBtn.addEventListener("click", startUpload);
+        setupDragAndDrop(fileDropArea, fileInput, (file) => {
+          selectedFile = file;
+          uploadBtn.disabled = false;
+          fileDropArea.innerHTML = `<p>已选择: ${
+            file.name
+          }</p><p><small>大小: ${formatFileSize(file.size)}</small></p>`;
+        });
+
+        // 分块上传区域
+        chunkFileInput.addEventListener("change", handleChunkFileSelect);
+        chunkUploadBtn.addEventListener("click", startChunkUpload);
+        setupDragAndDrop(chunkFileDropArea, chunkFileInput, (file) => {
+          selectedChunkFile = file;
+          chunkUploadBtn.disabled = false;
+          chunkFileDropArea.innerHTML = `<p>已选择: ${
+            file.name
+          }</p><p><small>大小: ${formatFileSize(file.size)}</small></p>`;
+        });
+      }
+
+      // 设置拖放功能
+      function setupDragAndDrop(dropArea, inputElement, callback) {
+        // 防止默认拖放行为
+        ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+          dropArea.addEventListener(eventName, preventDefaults, false);
+          document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        // 高亮拖放区域
+        ["dragenter", "dragover"].forEach((eventName) => {
+          dropArea.addEventListener(eventName, highlight, false);
+        });
+
+        ["dragleave", "drop"].forEach((eventName) => {
+          dropArea.addEventListener(eventName, unhighlight, false);
+        });
+
+        // 处理文件放置
+        dropArea.addEventListener("drop", handleDrop, false);
+
+        function preventDefaults(e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+
+        function highlight() {
+          dropArea.classList.add("drag-over");
+        }
+
+        function unhighlight() {
+          dropArea.classList.remove("drag-over");
+        }
+
+        function handleDrop(e) {
+          const dt = e.dataTransfer;
+          const files = dt.files;
+
+          if (files.length) {
+            inputElement.files = files;
+            if (inputElement === fileInput) {
+              handleFileSelect();
+            } else {
+              handleChunkFileSelect();
+            }
+          }
+        }
+      }
+
+      // 处理文件选择（普通上传）
+      function handleFileSelect() {
+        if (fileInput.files.length > 0) {
+          selectedFile = fileInput.files[0];
+          uploadBtn.disabled = false;
+          fileDropArea.innerHTML = `<p>已选择: ${
+            selectedFile.name
+          }</p><p><small>大小: ${formatFileSize(
+            selectedFile.size
+          )}</small></p>`;
+        }
+      }
+
+      // 处理文件选择（分块上传）
+      function handleChunkFileSelect() {
+        if (chunkFileInput.files.length > 0) {
+          selectedChunkFile = chunkFileInput.files[0];
+          chunkUploadBtn.disabled = false;
+          chunkFileDropArea.innerHTML = `<p>已选择: ${
+            selectedChunkFile.name
+          }</p><p><small>大小: ${formatFileSize(
+            selectedChunkFile.size
+          )}</small></p>`;
+        }
+      }
+
+      // 开始普通上传
+      async function startUpload() {
+        if (!selectedFile) {
+          showStatus(uploadStatus, "请先选择文件", "error");
+          return;
+        }
+
+        const endpoint = document.getElementById("endpoint").value;
+        const token = document.getElementById("uploadToken").value;
+        const path = document.getElementById("uploadPath").value;
+        const includeRealLink = realLinkCheckbox.checked;
+
+        if (!token) {
+          showStatus(uploadStatus, "请输入上传令牌", "error");
+          return;
+        }
+
+        // 禁用按钮
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = "上传中...";
+
+        // 重置状态
+        uploadProgress.style.width = "0%";
+        uploadProgressText.textContent = "0%";
+        uploadResult.textContent = "";
+        showStatus(uploadStatus, "开始上传...");
+
+        try {
+          // 创建FormData
+          const formData = new FormData();
+          formData.append("file", selectedFile);
+          formData.append("path", path);
+
+          // 创建请求URL
+          const url = new URL(endpoint);
+          url.searchParams.append("upload_token", token);
+
+          // 添加realLink参数
+          if (includeRealLink) {
+            url.searchParams.append("realLink", "true");
+          }
+
+          // 发送请求
+          const response = await fetch(url, {
+            method: "POST",
+            body: formData,
+          });
+
+          // 处理响应
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || "上传失败");
+          }
+
+          const result = await response.json();
+
+          if (result.code === 200) {
+            // 显示CDN URL
+            const cdnUrl = result.data.cdn_url;
+            const cdnProxyUrl = result.data.cdn_proxy_url;
+
+            uploadResult.innerHTML = `
+                        <h3>上传成功！</h3>
+                        <div class="url-box">
+                            <strong>CDN地址:</strong>
+                            <a href="${cdnUrl}" target="_blank">${cdnUrl}</a>
+                        </div>
+                        <div class="url-box">
+                            <strong>代理模式:</strong>
+                            <a href="${cdnProxyUrl}" target="_blank">${cdnProxyUrl}</a>
+                        </div>
+                    `;
+
+            // 如果包含真实地址
+            if (result.data.real_web_url) {
+              uploadResult.innerHTML += `
+                            <div class="url-box">
+                                <strong>真实下载地址:</strong>
+                                <a href="${
+                                  result.data.real_web_url
+                                }" target="_blank" style="word-break:break-all;">
+                                    ${result.data.real_web_url.substring(
+                                      0,
+                                      60
+                                    )}...
+                                </a>
+                            </div>
+                        `;
+            }
+
+            showStatus(uploadStatus, "上传成功！", "success");
+          } else {
+            uploadResult.textContent = JSON.stringify(result, null, 2);
+            showStatus(uploadStatus, `上传失败: ${result.message}`, "error");
+          }
+        } catch (error) {
+          uploadResult.textContent = `错误: ${error.message}`;
+          showStatus(uploadStatus, `上传失败: ${error.message}`, "error");
+        } finally {
+          uploadBtn.disabled = false;
+          uploadBtn.textContent = "开始上传";
+        }
+      }
+
+      // 开始分块上传
+      async function startChunkUpload() {
+        if (!selectedChunkFile) {
+          showStatus(chunkUploadStatus, "请先选择文件", "error");
+          return;
+        }
+
+        const endpoint = document.getElementById("chunkEndpoint").value;
+        const token = document.getElementById("chunkToken").value;
+        const path = document.getElementById("chunkPath").value;
+        const chunkSize =
+          parseInt(document.getElementById("chunkSize").value) * 1024 * 1024;
+        const includeRealLink = chunkRealLinkCheckbox.checked;
+
+        if (!token) {
+          showStatus(chunkUploadStatus, "请输入上传令牌", "error");
+          return;
+        }
+
+        // 禁用按钮
+        chunkUploadBtn.disabled = true;
+        chunkUploadBtn.textContent = "上传中...";
+
+        // 重置状态
+        chunkUploadProgress.style.width = "0%";
+        chunkUploadProgressText.textContent = "0%";
+        chunkUploadResult.textContent = "";
+        showStatus(chunkUploadStatus, "开始分块上传...");
+
+        try {
+          // 1. 创建上传会话
+          const sessionResult = await createUploadSession(
+            endpoint,
+            token,
+            path,
+            selectedChunkFile.name,
+            includeRealLink
+          );
+
+          if (!sessionResult.data) {
+            throw new Error("无法创建上传会话");
+          }
+
+          const sessionId = sessionResult.data.session_id;
+          const fileSize = selectedChunkFile.size;
+          const totalChunks = Math.ceil(fileSize / chunkSize);
+
+          showStatus(
+            chunkUploadStatus,
+            `创建会话成功，开始上传 ${totalChunks} 个分块...`
+          );
+
+          // 2. 上传所有分块
+          let uploadedBytes = 0;
+
+          let chunkResponse
+          for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+            const start = chunkIndex * chunkSize;
+            const end = Math.min(start + chunkSize, fileSize);
+            const chunk = selectedChunkFile.slice(start, end);
+
+            // 更新进度
+            const progress = Math.round((chunkIndex / totalChunks) * 100);
+            chunkUploadProgress.style.width = `${progress}%`;
+            chunkUploadProgressText.textContent = `${progress}%`;
+
+            // 上传分块
+            showStatus(
+              chunkUploadStatus,
+              `上传分块 ${chunkIndex + 1}/${totalChunks}...`
+            );
+            chunkResponse = await uploadChunk(
+              sessionId,
+              chunk,
+              start,
+              end - 1,
+              fileSize
+            );
+
+            uploadedBytes = end;
+
+            // 处理中间响应
+            if (chunkResponse.code === 202) {
+              showStatus(
+                chunkUploadStatus,
+                `分块 ${
+                  chunkIndex + 1
+                }/${totalChunks} 上传成功，继续下一个分块...`
+              );
+            }
+
+            // 更新进度
+            const newProgress = Math.round((uploadedBytes / fileSize) * 100);
+            chunkUploadProgress.style.width = `${newProgress}%`;
+            chunkUploadProgressText.textContent = `${newProgress}%`;
+          }
+
+          // 3. 完成上传
+          chunkUploadProgress.style.width = "100%";
+          chunkUploadProgressText.textContent = "100%";
+          showStatus(chunkUploadStatus, "所有分块上传完成！", "success");
+
+          // 显示最终结果
+          const cdnUrl = chunkResponse.data.cdn_url;
+          const cdnProxyUrl = `${cdnUrl}?proxy`;
+
+          chunkUploadResult.innerHTML = `
+                    <h3>上传成功！</h3>
+                    <div class="url-box">
+                        <strong>CDN地址:</strong>
+                        <a href="${cdnUrl}" target="_blank">${cdnUrl}</a>
+                    </div>
+                    <div class="url-box">
+                        <strong>代理模式:</strong>
+                        <a href="${cdnProxyUrl}" target="_blank">${cdnProxyUrl}</a>
+                    </div>
+                `;
+
+          // 如果包含真实地址
+          if (chunkResponse.data.real_web_url) {
+            chunkUploadResult.innerHTML += `
+                        <div class="url-box">
+                            <strong>真实下载地址:</strong>
+                            <a href="${
+                              chunkResponse.data.real_web_url
+                            }" target="_blank" style="word-break:break-all;">
+                                ${chunkResponse.data.real_web_url.substring(
+                                  0,
+                                  60
+                                )}...
+                            </a>
+                        </div>
+                    `;
+          }
+        } catch (error) {
+          chunkUploadResult.textContent = `错误: ${error.message}`;
+          showStatus(
+            chunkUploadStatus,
+            `分块上传失败: ${error.message}`,
+            "error"
+          );
+        } finally {
+          chunkUploadBtn.disabled = false;
+          chunkUploadBtn.textContent = "开始分块上传";
+        }
+      }
+
+      // 创建上传会话
+      async function createUploadSession(
+        endpoint,
+        token,
+        path,
+        fileName,
+        includeRealLink
+      ) {
+        const url = new URL(endpoint);
+        url.searchParams.append("upload_token", token);
+
+        // 添加realLink参数
+        if (includeRealLink) {
+          url.searchParams.append("realLink", "true");
+        }
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            fileName: fileName,
+            fileSize: selectedChunkFile.size,
+            uploadPath: path,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || "创建会话失败");
+        }
+
+        return await response.json();
+      }
+
+      // 上传分块
+      async function uploadChunk(sessionId, chunk, start, end, totalSize) {
+        // 构建分块上传URL
+        const chunkUrl = new URL(baseUrl);
+        chunkUrl.pathname = `/application-retain/api/upload/chunk/${sessionId}`;
+
+        // 设置Content-Range头
+        const contentRange = `bytes ${start}-${end}/${totalSize}`;
+
+        const response = await fetch(chunkUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Range": contentRange,
+            "Content-Type": "application/octet-stream",
+          },
+          body: chunk,
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(`分块上传失败: ${error}`);
+        }
+
+        return await response.json();
+      }
+
+      // 显示状态消息
+      function showStatus(element, message, type) {
+        element.textContent = message;
+        element.className = "status";
+
+        if (type === "success") {
+          element.classList.add("success");
+        } else if (type === "error") {
+          element.classList.add("error");
+        }
+      }
+
+      // 格式化文件大小
+      function formatFileSize(bytes) {
+        if (bytes === 0) return "0 Bytes";
+
+        const k = 1024;
+        const sizes = ["Bytes", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+      }
+    </script>
+  </body>
+</html>
