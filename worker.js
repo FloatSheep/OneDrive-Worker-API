@@ -1,8 +1,10 @@
 export default {
   async fetch(request, env) {
     try {
+      const CONFIG = OneDriveHandler.initConfig(env)
+
       // 令牌自动刷新
-      await OneDriveHandler.monitorTokenRefresh(env, {})
+      await OneDriveHandler.monitorTokenRefresh(env, CONFIG)
 
       console.log(OneDriveHandler.isPathAllowed('/OneDriveImageHosting/qqemoji/s277.png', ['/OneDriveImageHosting/**']));
 
@@ -24,14 +26,14 @@ export default {
   },
 
   async scheduled(event, env) {
+    const CONFIG = OneDriveHandler.initConfig(env);
     // 定时令牌刷新
     try {
-      const refreshed = await OneDriveHandler.monitorTokenRefresh(env, {})
-      return new Response(refreshed ? 'Token refreshed' : 'No refresh needed')
+      const refreshed = await OneDriveHandler.monitorTokenRefresh(env, CONFIG)
+
+      return refreshed;
     } catch (error) {
-      return new Response(`Scheduled task failed: ${error.message}`, {
-        status: 500
-      })
+      throw new Error("[TOKEN REFRESH ERROR]", error.message)
     }
   }
 }
@@ -39,7 +41,7 @@ export default {
 class OneDriveHandler {
   // 获取配置配置
   static initConfig(env) {
-    return {
+    const config = {
       adminEmails: env.ADMIN_EMAILS
         ? env.ADMIN_EMAILS.split(',').map((e) => e.trim().toLowerCase())
         : [],
@@ -62,6 +64,8 @@ class OneDriveHandler {
         allowedReferrers: env.ALLOWED_REFERRERS ? env.ALLOWED_REFERRERS.split(',').map(r => r.trim()) : [],
       }
     };
+
+    return config;
   }
 
   // 分发请求
@@ -132,14 +136,14 @@ class OneDriveHandler {
   }
 
   // 跨域头
-  static addCorsHeaders(response) {    
+  static addCorsHeaders(response) {
     // 克隆响应以便添加头部
     const newResponse = new Response(response.body, response);
-    
+
     // 添加 CORS 头部
     newResponse.headers.set("Access-Control-Allow-Origin", "*");
     newResponse.headers.set("Access-Control-Allow-Credentials", "true");
-    
+
     return newResponse;
   }
 
@@ -527,7 +531,7 @@ class OneDriveHandler {
 
       if (uploadResponse.status === 200 || uploadResponse.status === 201) {
         const fileInfo = await uploadResponse.json();
-        
+
         // 获取文件路径
         const filePath = sessionData.filePath.split('/')[0];
 
@@ -549,7 +553,7 @@ class OneDriveHandler {
             upload_time: new Date().toISOString()
           }
         };
-        
+
         // 如果请求包含 realLink 参数，添加真实地址
         if (sessionData.realLink) {
           responseData.data.real_download_url = fileInfo["@microsoft.graph.downloadUrl"];
@@ -662,8 +666,8 @@ class OneDriveHandler {
       const fullPath = `${uploadPath.endsWith('/') ? uploadPath : uploadPath + '/'}${file.name}`
 
       const uploadResult = await this.uploadToOneDrive(
-        accessToken, 
-        fullPath, 
+        accessToken,
+        fullPath,
         await file.arrayBuffer(),
         CONFIG
       );
@@ -853,15 +857,17 @@ class OneDriveHandler {
         )
       }
 
-      return this.jsonResponse(
-        {
-          code: 500,
-          message: 'Server error',
-          error: error.message,
-          stack: error.stack
-        },
-        500
-      )
+      if (error.message.includes('not found')) {
+        return this.jsonResponse(
+          {
+            code: 404,
+            message: 'File not found, please check your request address',
+            error: error.message,
+            stack: error.stack
+          },
+          404
+        )
+      }
     }
   }
 
@@ -984,28 +990,28 @@ class OneDriveHandler {
     if (!path.startsWith('/')) {
       throw new Error('Path must start with "/"');
     }
-  
+
     for (const pattern of allowedPatterns) {
       if (this.matchPattern(path, pattern)) {
         return true;
       }
     }
-  
+
     return false;
   }
-  
+
   static matchPattern(path, pattern) {
     // 如果模式以 **/ 结尾，表示匹配该目录及其所有子目录
     if (pattern.endsWith('/**')) {
       const basePath = pattern.slice(0, -3);
       return path.startsWith(basePath);
     }
-  
+
     // 精确匹配
     if (pattern === path) {
       return true;
     }
-  
+
     // 模式不是以 /** 结尾，也不是完全匹配，则不匹配
     return false;
   }
@@ -1359,40 +1365,40 @@ class OneDriveHandler {
     if (request.url.includes("/application-retain/api")) {
       return { allowed: true };
     }
-    
+
     const referrer = request.headers.get("Referer") || request.headers.get("Referrer");
-    
+
     // 处理空Referrer
     if (!referrer) {
       if (securityConfig.emptyReferrerPolicy === "block") {
-        return { 
+        return {
           allowed: false,
           reason: "Empty referrer not allowed"
         };
       }
       return { allowed: true };
     }
-    
+
     // 解析Referrer URL
     let referrerHost;
     try {
       const referrerUrl = new URL(referrer);
       referrerHost = referrerUrl.hostname;
     } catch {
-      return { 
+      return {
         allowed: false,
         reason: "Invalid referrer URL"
       };
     }
-    
+
     // 检查是否允许直接访问
     if (securityConfig.blockDirectAccess && referrerHost === request.headers.get("Host")) {
-      return { 
+      return {
         allowed: false,
         reason: "Direct access blocked"
       };
     }
-    
+
     // 检查Referrer白名单
     if (securityConfig.allowedReferrers.length > 0) {
       const isAllowed = securityConfig.allowedReferrers.some(allowedRef => {
@@ -1403,15 +1409,15 @@ class OneDriveHandler {
         }
         return referrerHost === allowedRef;
       });
-      
+
       if (!isAllowed) {
-        return { 
+        return {
           allowed: false,
           reason: `Referrer ${referrerHost} not in whitelist`
         };
       }
     }
-    
+
     return { allowed: true };
   }
 }
